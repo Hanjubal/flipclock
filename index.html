@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>플립시계</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="플립시계">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000" id="themeColor">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<style>
+:root {
+  --stage: #000000; --card-bg: #1b1b1c; --digit: #e9e7e2;
+  --ui-bg: rgba(24,24,25,.94); --ui-fg: #e6e4df; --ui-line: rgba(255,255,255,.18);
+  --card-shadow: rgba(0,0,0,0);
+  --card: 200px; --seam: 2px; --persp: 2.53; --fy: 0;
+}
+:root[data-skin="paper"] {
+  --stage: #d9dcde; --card-bg: #17181a; --digit: #f1f1ee;
+  --ui-bg: rgba(200,204,208,.96); --ui-fg: #15171a; --ui-line: rgba(0,0,0,.22);
+  --card-shadow: rgba(0,0,0,.35);
+}
+:root[data-skin="orange"] {
+  --stage: #d4551f; --card-bg: #151515; --digit: #f4f1ea;
+  --ui-bg: rgba(168,62,18,.96); --ui-fg: #fff6ef; --ui-line: rgba(255,255,255,.32);
+  --card-shadow: rgba(40,10,0,.45);
+}
+:root[data-skin="inverse"] {
+  --stage: #000000; --card-bg: #e9e8e4; --digit: #121212;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body {
+  position: fixed;
+  inset: 0;
+  background: var(--stage);
+  color: var(--ui-fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  transition: background-color .25s;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- 시계 ---------- */
+.stage {
+  position: absolute;
+  top: env(safe-area-inset-top, 0px);
+  right: env(safe-area-inset-right, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
+  left: env(safe-area-inset-left, 0px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+}
+.clock {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--card) * .06);
+  transition: transform 2.5s ease-in-out;
+}
+.clock.vertical { flex-direction: column; }
+
+.card {
+  position: relative;
+  flex: none;
+  width: var(--card);
+  height: var(--card);
+  perspective: calc(var(--card) * var(--persp));
+  border-radius: calc(var(--card) * .07);
+  background: #060606;
+  box-shadow: 0 calc(var(--card) * .03) calc(var(--card) * .09) var(--card-shadow);
+}
+.card[hidden] { display: none; }
+.card::before, .card::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: calc(var(--card) * .022);
+  height: calc(var(--card) * .1);
+  transform: translateY(-50%);
+  background: var(--stage);
+  z-index: 5;
+}
+.card::before { left: 0; border-radius: 0 2px 2px 0; }
+.card::after  { right: 0; border-radius: 2px 0 0 2px; }
+
+.half {
+  position: absolute;
+  left: 0; right: 0;
+  height: calc(50% - var(--seam) / 2);
+  overflow: hidden;
+}
+.half.top {
+  top: 0;
+  border-radius: calc(var(--card) * .07) calc(var(--card) * .07) calc(var(--card) * .012) calc(var(--card) * .012);
+  transform-origin: 50% calc(100% + var(--seam) / 2);
+  background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,0) 75%), var(--card-bg);
+}
+.half.bottom {
+  bottom: 0;
+  border-radius: calc(var(--card) * .012) calc(var(--card) * .012) calc(var(--card) * .07) calc(var(--card) * .07);
+  transform-origin: 50% calc(var(--seam) / -2);
+  background: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,0) 30%), var(--card-bg);
+}
+.flap {
+  z-index: 2;
+  visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform;
+}
+.face {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: var(--card);
+  line-height: var(--card);
+  text-align: center;
+  white-space: nowrap;
+  color: var(--digit);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: calc(var(--card) * .72);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+.top .face { top: 0; }
+.bottom .face { bottom: 0; }
+.num { display: inline-block; transform: translateY(calc(var(--fy) * 1em)); }
+.ampm {
+  position: absolute;
+  left: calc(var(--card) * .075);
+  top: calc(var(--card) * .07);
+  font-size: calc(var(--card) * .075);
+  line-height: 1;
+  letter-spacing: .04em;
+}
+.shade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- 설정 시트 ---------- */
+.sheet {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 28px));
+  max-height: calc(100% - 60px);
+  overflow-y: auto;
+  padding: 18px 20px 16px;
+  border-radius: 18px;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-line);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  font-size: 16px;
+  line-height: 1.45;
+  z-index: 20;
+}
+.sheet[hidden] { display: none; }
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 46px;
+  border-bottom: 1px solid var(--ui-line);
+}
+.row:last-of-type { border-bottom: 0; }
+.row input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--ui-fg); }
+.swatches { display: flex; gap: 12px; }
+.sw {
+  width: 36px; height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--ui-line);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.sw::after {
+  content: "";
+  position: absolute;
+  left: 25%; top: 25%; width: 50%; height: 50%;
+  border-radius: 3px;
+  background: var(--sw-card);
+}
+.sw[aria-pressed="true"] { border-color: var(--ui-fg); border-width: 3px; }
+.note {
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  opacity: .78;
+}
+.note[hidden] { display: none; }
+.close {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 11px;
+  font: inherit;
+  color: var(--ui-fg);
+  background: transparent;
+  border: 1px solid var(--ui-line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.close:active { opacity: .6; }
+.sw:focus-visible, .close:focus-visible, input:focus-visible {
+  outline: 2px solid var(--ui-fg); outline-offset: 2px;
+}
+
+.hint {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 26px);
+  text-align: center;
+  font-size: 15px;
+  color: var(--digit);
+  opacity: 0;
+  transition: opacity .8s;
+  pointer-events: none;
+  z-index: 10;
+}
+.hint.show { opacity: .55; }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage" tabindex="0" role="button" aria-label="시계">
+  <div class="clock" id="clock">
+    <div class="card" id="cH" aria-hidden="true">
+      <div class="half top static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half top flap"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom flap"><div class="face"></div><div class="shade"></div></div>
+    </div>
+    <div class="card" id="cM" aria-hidden="true">
+      <div class="half top static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half top flap"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom flap"><div class="face"></div><div class="shade"></div></div>
+    </div>
+    <div class="card" id="cS" aria-hidden="true">
+      <div class="half top static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half top flap"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom flap"><div class="face"></div><div class="shade"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="hint" id="hint">화면을 누르면 설정이 나옵니다</div>
+
+<div class="sheet" id="sheet" hidden>
+  <label class="row">초 표시 <input type="checkbox" id="sec"></label>
+  <label class="row">24시간제 <input type="checkbox" id="h24"></label>
+  <label class="row">화면 꺼짐 방지 <input type="checkbox" id="awake"></label>
+  <label class="row">번인 방지 (1분마다 미세 이동) <input type="checkbox" id="shift"></label>
+  <div class="row" role="group" aria-label="색">색
+    <div class="swatches">
+      <button class="sw" data-skin="ink" aria-label="먹" style="background:#000;--sw-card:#2a2a2b"></button>
+      <button class="sw" data-skin="paper" aria-label="백지" style="background:#d9dcde;--sw-card:#17181a"></button>
+      <button class="sw" data-skin="orange" aria-label="주황" style="background:#d4551f;--sw-card:#151515"></button>
+      <button class="sw" data-skin="inverse" aria-label="역상" style="background:#000;--sw-card:#e9e8e4"></button>
+    </div>
+  </div>
+  <p class="note" id="awakeNote" hidden></p>
+  <p class="note" id="installNote" hidden>사파리의 공유 버튼에서 "홈 화면에 추가"를 하면 주소창 없는 전체화면 앱이 됩니다.</p>
+  <button class="close" id="close">설정 닫기</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var root = document.documentElement;
+  var $ = function (s) { return document.querySelector(s); };
+  var SKINS = { ink: '#000000', paper: '#d9dcde', orange: '#d4551f', inverse: '#000000' };
+
+  /* 미리보기에서 확정한 넘김 수치 */
+  var SPEED = 560, SHADE = 0.6;
+
+  var reduced = false;
+  try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+  var S = { sec: true, h24: true, awake: true, shift: true, skin: 'ink' };
+  try {
+    var saved = JSON.parse(localStorage.getItem('flipclock') || 'null');
+    if (saved && typeof saved === 'object') {
+      Object.keys(S).forEach(function (k) { if (typeof saved[k] === typeof S[k]) S[k] = saved[k]; });
+      if (!SKINS[S.skin]) S.skin = 'ink';
+    }
+  } catch (e) {}
+  function save() { try { localStorage.setItem('flipclock', JSON.stringify(S)); } catch (e) {} }
+
+  /* ---------- 카드 ---------- */
+  function makeCard(el) {
+    return {
+      el: el,
+      sTop: el.querySelector('.static.top'), sBot: el.querySelector('.static.bottom'),
+      fTop: el.querySelector('.flap.top'),   fBot: el.querySelector('.flap.bottom'),
+      html: '', anims: [], token: 0
+    };
+  }
+  function faceHTML(text, tag) {
+    return '<span class="num">' + text + '</span>' + (tag ? '<span class="ampm">' + tag + '</span>' : '');
+  }
+  function setFace(half, html) { half.querySelector('.face').innerHTML = html; }
+  function shadeOf(half) { return half.querySelector('.shade'); }
+
+  function commit(c) {
+    var old = c.anims; c.anims = [];
+    old.forEach(function (a) { try { a.cancel(); } catch (e) {} });
+    setFace(c.sTop, c.html);
+    setFace(c.sBot, c.html);
+    c.fTop.style.visibility = 'hidden';
+    c.fBot.style.visibility = 'hidden';
+  }
+
+  function flip(c, html, instant) {
+    if (html === c.html) return;
+    if (c.anims.length) commit(c);
+    var old = c.html;
+    c.html = html;
+    c.token++;
+    if (instant || old === '' || reduced || typeof c.fTop.animate !== 'function') { commit(c); return; }
+
+    var t = c.token;
+    setFace(c.fTop, old);
+    setFace(c.fBot, html);
+    setFace(c.sTop, html);
+    c.fTop.style.visibility = 'visible';
+    c.fBot.style.visibility = 'visible';
+
+    var D = SPEED, k = SHADE;
+    var tTop = D * 0.707, tBot = D - tTop, tail = D * 0.3;
+    function A(el, kf, opt) {
+      opt.fill = 'both';
+      var a = el.animate(kf, opt);
+      c.anims.push(a);
+    }
+    A(c.fTop, [{ transform: 'rotateX(0deg)' }, { transform: 'rotateX(-90deg)' }],
+      { duration: tTop, easing: 'cubic-bezier(.333,0,.667,.333)' });
+    A(shadeOf(c.fTop), [{ opacity: 0 }, { opacity: 0.6 * k }], { duration: tTop, easing: 'ease-in' });
+    A(shadeOf(c.sBot), [{ opacity: 0 }, { opacity: 0.45 * k }], { duration: tTop, easing: 'ease-in' });
+    A(shadeOf(c.sTop), [{ opacity: 0.35 * k }, { opacity: 0 }], { duration: tTop, easing: 'ease-out' });
+
+    var o = tBot / (tBot + tail);
+    A(c.fBot, [
+      { transform: 'rotateX(90deg)', easing: 'cubic-bezier(.333,.276,.667,.609)' },
+      { transform: 'rotateX(0deg)', offset: o, easing: 'ease-out' },
+      { transform: 'rotateX(6deg)', offset: o + (1 - o) * 0.45, easing: 'ease-in' },
+      { transform: 'rotateX(0deg)' }
+    ], { delay: tTop, duration: tBot + tail });
+    A(shadeOf(c.fBot), [{ opacity: 0.6 * k }, { opacity: 0 }], { delay: tTop, duration: tBot, easing: 'linear' });
+
+    Promise.all(c.anims.map(function (a) { return a.finished; }))
+      .then(function () { if (c.token === t) commit(c); })
+      .catch(function () {});
+  }
+
+  var cards = { h: makeCard($('#cH')), m: makeCard($('#cM')), s: makeCard($('#cS')) };
+  var stage = $('#stage'), clock = $('#clock');
+
+  /* ---------- 시간 ---------- */
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  var lastMinute = -1;
+  function render(instant) {
+    var now = new Date();
+    var h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+    var hText = S.h24 ? pad(h) : String(h % 12 || 12);
+    var tag = S.h24 ? '' : (h < 12 ? 'AM' : 'PM');
+    flip(cards.h, faceHTML(hText, tag), instant);
+    flip(cards.m, faceHTML(pad(m), ''), instant);
+    flip(cards.s, faceHTML(pad(s), ''), instant || !S.sec);
+    if (m !== lastMinute) {
+      lastMinute = m;
+      stage.setAttribute('aria-label', '현재 시각 ' + hText + '시 ' + m + '분. 누르면 설정이 열립니다.');
+      pixelShift();
+    }
+  }
+  var timer = null;
+  function tick() {
+    render(false);
+    timer = setTimeout(tick, 1000 - (Date.now() % 1000) + 8);   /* 초 경계에 맞춰 시각을 다시 읽음 */
+  }
+
+  /* 번인 방지: 1분마다 시계 전체를 아주 조금 옮김 */
+  function pixelShift() {
+    if (!S.shift) { clock.style.transform = ''; return; }
+    var card = parseFloat(getComputedStyle(root).getPropertyValue('--card')) || 200;
+    var r = card * 0.025;
+    var dx = (Math.random() * 2 - 1) * r, dy = (Math.random() * 2 - 1) * r;
+    clock.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+  }
+
+  /* ---------- 크기: 가로 배열과 세로 배열 중 카드가 더 커지는 쪽 ---------- */
+  function layout() {
+    var n = S.sec ? 3 : 2;
+    var W = stage.clientWidth, H = stage.clientHeight;
+    if (!W || !H) return;
+    var span = n + (n - 1) * 0.06;
+    var rowCard = Math.min(W * 0.88 / span, H * 0.8);
+    var colCard = Math.min(H * 0.88 / span, W * 0.8);
+    var vertical = colCard > rowCard * 1.05;
+    var card = vertical ? colCard : rowCard;
+    card = Math.max(40, Math.floor(card / 2) * 2);
+    var seam = Math.max(2, Math.round(card * 0.012 / 2) * 2);
+    clock.classList.toggle('vertical', vertical);
+    root.style.setProperty('--card', card + 'px');
+    root.style.setProperty('--seam', seam + 'px');
+  }
+  if (typeof ResizeObserver === 'function') new ResizeObserver(layout).observe(stage);
+  window.addEventListener('resize', layout);
+  window.addEventListener('orientationchange', function () { setTimeout(layout, 300); });
+
+  /* 숫자를 카드 정중앙에 맞추는 수직 보정 */
+  function measureFy() {
+    try {
+      var ctx = document.createElement('canvas').getContext('2d');
+      ctx.font = '700 100px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      var mt = ctx.measureText('0');
+      if (typeof mt.fontBoundingBoxAscent !== 'number' || typeof mt.actualBoundingBoxAscent !== 'number') return 0;
+      var fy = -((mt.fontBoundingBoxAscent - mt.fontBoundingBoxDescent) -
+                 (mt.actualBoundingBoxAscent - mt.actualBoundingBoxDescent)) / 200;
+      return (!isFinite(fy) || Math.abs(fy) > 0.3) ? 0 : fy;
+    } catch (e) { return 0; }
+  }
+
+  /* ---------- 화면 꺼짐 방지 ---------- */
+  var lock = null, lockFailed = false;
+  function updateAwakeNote() {
+    var note = $('#awakeNote');
+    if (!S.awake) { note.hidden = true; return; }
+    if (!('wakeLock' in navigator) || lockFailed) {
+      note.hidden = false;
+      note.textContent = '이 기기에서는 화면 꺼짐 방지가 작동하지 않습니다. 아이패드 설정 → 디스플레이 및 밝기 → 자동 잠금 → "안 함"으로 바꿔 주세요.';
+    } else {
+      note.hidden = true;
+    }
+  }
+  function acquire() {
+    if (!S.awake || lock || !('wakeLock' in navigator) || document.visibilityState !== 'visible') {
+      updateAwakeNote(); return;
+    }
+    navigator.wakeLock.request('screen').then(function (l) {
+      lock = l; lockFailed = false;
+      l.addEventListener('release', function () { lock = null; });
+      updateAwakeNote();
+    }).catch(function () { lock = null; lockFailed = true; updateAwakeNote(); });
+  }
+  function releaseLock() {
+    if (lock) { try { lock.release(); } catch (e) {} lock = null; }
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      clearTimeout(timer);
+      render(true);          /* 돌아오는 순간 옛 시각이 비치지 않도록 즉시 갱신 */
+      tick();
+      acquire();
+    }
+  });
+  window.addEventListener('pageshow', function () { render(true); acquire(); });
+  document.addEventListener('pointerdown', function () { if (!lock) acquire(); }, true);
+
+  /* ---------- 설정 ---------- */
+  function applyAll() {
+    root.setAttribute('data-skin', S.skin);
+    $('#themeColor').setAttribute('content', SKINS[S.skin]);
+    cards.s.el.hidden = !S.sec;
+    $('#sec').checked = S.sec;
+    $('#h24').checked = S.h24;
+    $('#awake').checked = S.awake;
+    $('#shift').checked = S.shift;
+    Array.prototype.forEach.call(document.querySelectorAll('.sw'), function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-skin') === S.skin ? 'true' : 'false');
+    });
+    save();
+  }
+  $('#sec').addEventListener('change', function (e) { S.sec = e.target.checked; applyAll(); layout(); render(true); });
+  $('#h24').addEventListener('change', function (e) { S.h24 = e.target.checked; applyAll(); render(false); });
+  $('#awake').addEventListener('change', function (e) {
+    S.awake = e.target.checked; applyAll();
+    if (S.awake) acquire(); else { releaseLock(); updateAwakeNote(); }
+  });
+  $('#shift').addEventListener('change', function (e) { S.shift = e.target.checked; applyAll(); pixelShift(); });
+  Array.prototype.forEach.call(document.querySelectorAll('.sw'), function (b) {
+    b.addEventListener('click', function () { S.skin = b.getAttribute('data-skin'); applyAll(); });
+  });
+
+  var sheet = $('#sheet'), hint = $('#hint');
+  function toggleSheet(show) {
+    sheet.hidden = (typeof show === 'boolean') ? !show : !sheet.hidden;
+    hint.classList.remove('show');
+  }
+  stage.addEventListener('click', function () { toggleSheet(); });
+  stage.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSheet(); }
+  });
+  $('#close').addEventListener('click', function () { toggleSheet(false); });
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+
+  var standalone = false;
+  try {
+    standalone = window.navigator.standalone === true ||
+                 window.matchMedia('(display-mode: standalone)').matches;
+  } catch (e) {}
+  $('#installNote').hidden = standalone;
+
+  /* 첫 실행 때만 안내 문구를 잠깐 보여 줌 */
+  try {
+    if (!localStorage.getItem('flipclock-hinted')) {
+      localStorage.setItem('flipclock-hinted', '1');
+      setTimeout(function () { hint.classList.add('show'); }, 800);
+      setTimeout(function () { hint.classList.remove('show'); }, 6000);
+    }
+  } catch (e) {}
+
+  /* ---------- 오프라인 동작 ---------- */
+  if ('serviceWorker' in navigator &&
+      (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+
+  /* ---------- 시작 ---------- */
+  root.style.setProperty('--fy', measureFy());
+  applyAll();
+  layout();
+  tick();
+  acquire();
+})();
+</script>
+</body>
+</html>
