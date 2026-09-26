@@ -16,7 +16,7 @@
   --stage: #000000; --card-bg: #1b1b1c; --digit: #e9e7e2;
   --ui-bg: rgba(24,24,25,.94); --ui-fg: #e6e4df; --ui-line: rgba(255,255,255,.18);
   --card-shadow: rgba(0,0,0,0);
-  --card: 200px; --seam: 2px; --persp: 2.53; --fy: 0;
+  --card: 200px; --ccard: 110px; --seam: 2px; --persp: 2.53; --fy: 0;
 }
 :root[data-skin="paper"] {
   --stage: #d9dcde; --card-bg: #17181a; --digit: #f1f1ee;
@@ -77,22 +77,23 @@ body {
 .clock.vertical { flex-direction: column; }
 
 .card {
+  --u: var(--card);
   position: relative;
   flex: none;
-  width: var(--card);
-  height: var(--card);
-  perspective: calc(var(--card) * var(--persp));
-  border-radius: calc(var(--card) * .07);
+  width: var(--u);
+  height: var(--u);
+  perspective: calc(var(--u) * var(--persp));
+  border-radius: calc(var(--u) * .07);
   background: #060606;
-  box-shadow: 0 calc(var(--card) * .03) calc(var(--card) * .09) var(--card-shadow);
+  box-shadow: 0 calc(var(--u) * .03) calc(var(--u) * .09) var(--card-shadow);
 }
 .card[hidden] { display: none; }
 .card::before, .card::after {
   content: "";
   position: absolute;
   top: 50%;
-  width: calc(var(--card) * .022);
-  height: calc(var(--card) * .1);
+  width: calc(var(--u) * .022);
+  height: calc(var(--u) * .1);
   transform: translateY(-50%);
   background: var(--stage);
   z-index: 5;
@@ -108,13 +109,13 @@ body {
 }
 .half.top {
   top: 0;
-  border-radius: calc(var(--card) * .07) calc(var(--card) * .07) calc(var(--card) * .012) calc(var(--card) * .012);
+  border-radius: calc(var(--u) * .07) calc(var(--u) * .07) calc(var(--u) * .012) calc(var(--u) * .012);
   transform-origin: 50% calc(100% + var(--seam) / 2);
   background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,0) 75%), var(--card-bg);
 }
 .half.bottom {
   bottom: 0;
-  border-radius: calc(var(--card) * .012) calc(var(--card) * .012) calc(var(--card) * .07) calc(var(--card) * .07);
+  border-radius: calc(var(--u) * .012) calc(var(--u) * .012) calc(var(--u) * .07) calc(var(--u) * .07);
   transform-origin: 50% calc(var(--seam) / -2);
   background: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,0) 30%), var(--card-bg);
 }
@@ -129,14 +130,14 @@ body {
   position: absolute;
   left: 0;
   width: 100%;
-  height: var(--card);
-  line-height: var(--card);
+  height: var(--u);
+  line-height: var(--u);
   text-align: center;
   white-space: nowrap;
   color: var(--digit);
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-weight: 700;
-  font-size: calc(var(--card) * .72);
+  font-size: calc(var(--u) * .72);
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
@@ -145,9 +146,9 @@ body {
 .num { display: inline-block; transform: translateY(calc(var(--fy) * 1em)); }
 .ampm {
   position: absolute;
-  left: calc(var(--card) * .075);
-  top: calc(var(--card) * .07);
-  font-size: calc(var(--card) * .075);
+  left: calc(var(--u) * .075);
+  top: calc(var(--u) * .07);
+  font-size: calc(var(--u) * .075);
   line-height: 1;
   letter-spacing: .04em;
 }
@@ -158,6 +159,19 @@ body {
   opacity: 0;
   pointer-events: none;
 }
+
+/* ---------- 카운터 ---------- */
+.wrap { display: flex; flex-direction: column; align-items: center; gap: calc(var(--card) * .14); transition: transform 2.5s ease-in-out; }
+.counter { display: flex; flex-direction: column; align-items: center; gap: calc(var(--ccard) * .12); }
+.counter[hidden] { display: none; }
+.label { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 700; font-size: calc(var(--ccard) * .17); letter-spacing: .18em; color: var(--digit); opacity: .55; }
+.crow { display: flex; align-items: flex-start; gap: calc(var(--ccard) * .12); }
+.unit { display: flex; flex-direction: column; align-items: center; gap: calc(var(--ccard) * .1); }
+.counter .card { --u: var(--ccard); }
+.counter .card.wide { width: calc(var(--ccard) * 2.05); }
+.counter .card.wide .face { font-size: calc(var(--ccard) * .72); }
+.sub { font-family: -apple-system, "Apple SD Gothic Neo", sans-serif; font-size: calc(var(--ccard) * .16); color: var(--digit); opacity: .5; }
+.clock.vertical + .counter .crow { }
 
 /* ---------- 설정 시트 ---------- */
 .sheet {
@@ -248,6 +262,7 @@ body {
 <body>
 
 <div class="stage" id="stage" tabindex="0" role="button" aria-label="시계">
+  <div class="wrap" id="wrap">
   <div class="clock" id="clock">
     <div class="card" id="cH" aria-hidden="true">
       <div class="half top static"><div class="face"></div><div class="shade"></div></div>
@@ -268,6 +283,30 @@ body {
       <div class="half bottom flap"><div class="face"></div><div class="shade"></div></div>
     </div>
   </div>
+  <div class="counter" id="counter">
+    <div class="label" id="clabel">SINCE CHATGPT · 2022.11.30</div>
+    <div class="crow">
+      <div class="unit">    <div class="card wide" id="cD" aria-hidden="true">
+      <div class="half top static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half top flap"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom flap"><div class="face"></div><div class="shade"></div></div>
+    </div><div class="sub">일</div></div>
+      <div class="unit">    <div class="card" id="cCH" aria-hidden="true">
+      <div class="half top static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half top flap"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom flap"><div class="face"></div><div class="shade"></div></div>
+    </div><div class="sub">시간</div></div>
+      <div class="unit">    <div class="card" id="cCM" aria-hidden="true">
+      <div class="half top static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom static"><div class="face"></div><div class="shade"></div></div>
+      <div class="half top flap"><div class="face"></div><div class="shade"></div></div>
+      <div class="half bottom flap"><div class="face"></div><div class="shade"></div></div>
+    </div><div class="sub">분</div></div>
+    </div>
+  </div>
+  </div>
 </div>
 
 <div class="hint" id="hint">화면을 누르면 설정이 나옵니다</div>
@@ -275,6 +314,8 @@ body {
 <div class="sheet" id="sheet" hidden>
   <label class="row">초 표시 <input type="checkbox" id="sec"></label>
   <label class="row">24시간제 <input type="checkbox" id="h24"></label>
+  <label class="row">챗GPT 카운터 표시 <input type="checkbox" id="ctr"></label>
+  <label class="row">카운터 라벨 한글로 <input type="checkbox" id="ckr"></label>
   <label class="row">화면 꺼짐 방지 <input type="checkbox" id="awake"></label>
   <label class="row">번인 방지 (1분마다 미세 이동) <input type="checkbox" id="shift"></label>
   <div class="row" role="group" aria-label="색">색
@@ -303,15 +344,15 @@ body {
   var reduced = false;
   try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
 
-  var S = { sec: true, h24: true, awake: true, shift: true, skin: 'ink' };
+  var S = { sec: true, h24: true, awake: true, shift: true, skin: 'ink', ctr: true, ckr: false };
   try {
-    var saved = JSON.parse(localStorage.getItem('flipclock') || 'null');
+    var saved = JSON.parse(localStorage.getItem('flipclock-ctr') || 'null');
     if (saved && typeof saved === 'object') {
       Object.keys(S).forEach(function (k) { if (typeof saved[k] === typeof S[k]) S[k] = saved[k]; });
       if (!SKINS[S.skin]) S.skin = 'ink';
     }
   } catch (e) {}
-  function save() { try { localStorage.setItem('flipclock', JSON.stringify(S)); } catch (e) {} }
+  function save() { try { localStorage.setItem('flipclock-ctr', JSON.stringify(S)); } catch (e) {} }
 
   /* ---------- 카드 ---------- */
   function makeCard(el) {
@@ -379,8 +420,10 @@ body {
       .catch(function () {});
   }
 
-  var cards = { h: makeCard($('#cH')), m: makeCard($('#cM')), s: makeCard($('#cS')) };
-  var stage = $('#stage'), clock = $('#clock');
+  var cards = { h: makeCard($('#cH')), m: makeCard($('#cM')), s: makeCard($('#cS')), d: makeCard($('#cD')), ch: makeCard($('#cCH')), cm: makeCard($('#cCM')) };
+  var stage = $('#stage'), clock = $('#clock'), wrap = $('#wrap'), counter = $('#counter');
+  /* ChatGPT 공개일 2022-11-30 (미국 태평양 자정 = 08:00 UTC). 정확한 시각은 미공개라 상징적 기준 */
+  var EPOCH = Date.UTC(2022, 10, 30, 8, 0, 0);
 
   /* ---------- 시간 ---------- */
   function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -393,6 +436,13 @@ body {
     flip(cards.h, faceHTML(hText, tag), instant);
     flip(cards.m, faceHTML(pad(m), ''), instant);
     flip(cards.s, faceHTML(pad(s), ''), instant || !S.sec);
+    if (S.ctr) {
+      var diff = Math.max(0, now.getTime() - EPOCH);
+      var dd = Math.floor(diff / 86400000), hh = Math.floor(diff % 86400000 / 3600000), mm = Math.floor(diff % 3600000 / 60000);
+      flip(cards.d, faceHTML(String(dd), ''), instant);
+      flip(cards.ch, faceHTML(pad(hh), ''), instant);
+      flip(cards.cm, faceHTML(pad(mm), ''), instant);
+    }
     if (m !== lastMinute) {
       lastMinute = m;
       stage.setAttribute('aria-label', '현재 시각 ' + hText + '시 ' + m + '분. 누르면 설정이 열립니다.');
@@ -407,11 +457,11 @@ body {
 
   /* 번인 방지: 1분마다 시계 전체를 아주 조금 옮김 */
   function pixelShift() {
-    if (!S.shift) { clock.style.transform = ''; return; }
+    if (!S.shift) { wrap.style.transform = ''; return; }
     var card = parseFloat(getComputedStyle(root).getPropertyValue('--card')) || 200;
     var r = card * 0.025;
     var dx = (Math.random() * 2 - 1) * r, dy = (Math.random() * 2 - 1) * r;
-    clock.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+    wrap.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
   }
 
   /* ---------- 크기: 가로 배열과 세로 배열 중 카드가 더 커지는 쪽 ---------- */
@@ -420,14 +470,17 @@ body {
     var W = stage.clientWidth, H = stage.clientHeight;
     if (!W || !H) return;
     var span = n + (n - 1) * 0.06;
-    var rowCard = Math.min(W * 0.88 / span, H * 0.8);
-    var colCard = Math.min(H * 0.88 / span, W * 0.8);
+    var extra = S.ctr ? 0.14 + 0.55 * (0.17 + 0.12 + 1 + 0.1 + 0.16 + 0.12) : 0;   /* 카운터 블록 높이(카드 대비) */
+    var cw = S.ctr ? 0.55 * (2.05 + 1 + 1 + 0.24) : 0;                              /* 카운터 블록 너비(카드 대비) */
+    var rowCard = Math.min(W * 0.88 / Math.max(span, cw), H * 0.8 / (1 + extra));
+    var colCard = Math.min(H * 0.88 / (span + extra), W * 0.8 / Math.max(1, cw));
     var vertical = colCard > rowCard * 1.05;
     var card = vertical ? colCard : rowCard;
     card = Math.max(40, Math.floor(card / 2) * 2);
     var seam = Math.max(2, Math.round(card * 0.012 / 2) * 2);
     clock.classList.toggle('vertical', vertical);
     root.style.setProperty('--card', card + 'px');
+    root.style.setProperty('--ccard', Math.floor(card * 0.55 / 2) * 2 + 'px');
     root.style.setProperty('--seam', seam + 'px');
   }
   if (typeof ResizeObserver === 'function') new ResizeObserver(layout).observe(stage);
@@ -493,6 +546,10 @@ body {
     $('#h24').checked = S.h24;
     $('#awake').checked = S.awake;
     $('#shift').checked = S.shift;
+    $('#ctr').checked = S.ctr; $('#ckr').checked = S.ckr;
+    counter.hidden = !S.ctr;
+    $('#clabel').textContent = S.ckr ? '챗GPT 모멘트로부터 · 2022.11.30' : 'SINCE CHATGPT · 2022.11.30';
+    $('#clabel').style.letterSpacing = S.ckr ? '.06em' : '.18em';
     Array.prototype.forEach.call(document.querySelectorAll('.sw'), function (b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-skin') === S.skin ? 'true' : 'false');
     });
@@ -504,6 +561,8 @@ body {
     S.awake = e.target.checked; applyAll();
     if (S.awake) acquire(); else { releaseLock(); updateAwakeNote(); }
   });
+  $('#ctr').addEventListener('change', function (e) { S.ctr = e.target.checked; applyAll(); layout(); render(true); });
+  $('#ckr').addEventListener('change', function (e) { S.ckr = e.target.checked; applyAll(); });
   $('#shift').addEventListener('change', function (e) { S.shift = e.target.checked; applyAll(); pixelShift(); });
   Array.prototype.forEach.call(document.querySelectorAll('.sw'), function (b) {
     b.addEventListener('click', function () { S.skin = b.getAttribute('data-skin'); applyAll(); });

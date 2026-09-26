@@ -1,5 +1,5 @@
 /* 플립시계 오프라인 캐시. 파일을 고친 뒤에는 아래 버전 숫자를 하나 올리면 확실히 갱신됩니다. */
-const CACHE = 'flipclock-v1';
+const CACHE = 'flipclock-v2';
 const ASSETS = ['./', 'index.html', 'icon.png'];
 
 self.addEventListener('install', (e) => {
